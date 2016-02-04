@@ -233,8 +233,8 @@ export function h(nodeName, attributes, ...args) {
 				arr[0] = p;
 			}
 			for (let j=0; j<arr.length; j++) {
-				let child = arr[j],
-					simple = !empty(child) && !isVNode(child);
+				let child = arr[j];
+				let simple = !empty(child) && !isVNode(child);
 				if (simple) child = String(child);
 				if (simple && lastSimple) {
 					children[children.length-1] += child;
@@ -337,6 +337,7 @@ function buildFunctionalComponent(vnode) {
 
 
 /** Mark component as dirty and queue up a render.
+ * queue にも加えていくのか。その queue を受け持つのは renderQueue
  *	@param {Component} component
  *	@private
  */
@@ -384,10 +385,12 @@ function renderComponent(component, opts) {
 
 	component._dirty = false;
 
-	let p = component.nextProps,
-		s = component.state;
+	let p = component.nextProps;
+	let s = component.state;
 
 	if (component.base) {
+
+		// shouldComponentUpdate があれば render しない
 		if (hook(component, 'shouldComponentUpdate', p, s)===false) {
 			component.props = p;
 			return;
@@ -398,9 +401,9 @@ function renderComponent(component, opts) {
 
 	component.props = p;
 
-	let rendered = hook(component, 'render', p, s),
-		childComponent = rendered && rendered.nodeName,
-		base;
+	let rendered = hook(component, 'render', p, s);
+	let childComponent = rendered && rendered.nodeName;
+	let base;
 
 	if (typeof childComponent==='function' && childComponent.prototype.render) {
 		// set up high order component link
@@ -644,8 +647,9 @@ function build(dom, vnode) {
 			// if (isFunctionalComponent(vchild)) {
 			// 	vchild = buildFunctionalComponent(vchild);
 			// }
-			let attrs = vchild.attributes,
-				key, child;
+			let attrs = vchild.attributes;
+			let key;
+			let child;
 			if (attrs) {
 				key = attrs.key;
 				child = key && keyed[key];
@@ -758,16 +762,19 @@ let renderQueue = {
 	},
 
 	process() {
-		let items = renderQueue.items,
-			len = items.length;
+		let items = renderQueue.items;
+		let len = items.length;
 		if (!len) return;
 		renderQueue.items = renderQueue.itemsOffline;
 		renderQueue.items.length = 0;
 		renderQueue.itemsOffline = items;
 		while (len--) {
+
+			// queue of dirty components を render してゆくという 実際の render 処理っぽい
 			if (items[len]._dirty) {
 				renderComponent(items[len]);
 			}
+
 		}
 	}
 };
